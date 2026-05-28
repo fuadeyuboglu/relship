@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Love &amp; Intimacy — A Card Game for Couples</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400;1,600&family=Inter:wght@300;400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #100e1a;
+      --surface: #1c1828;
+      --border: rgba(255,255,255,0.07);
+      --text: #ede2d0;
+      --text-dim: rgba(237,226,208,0.42);
+      --gold: #c8875a;
+      --gold-light: #eaad7e;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100svh;
+      overflow-x: hidden;
+    }
+
+    /* ─── Splash ─────────────────────────────── */
+    #splash {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      padding: 2rem;
+      transition: opacity .7s, visibility .7s;
+    }
+    #splash.out { opacity: 0; visibility: hidden; pointer-events: none; }
+
+    .splash-bg {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 70% 50% at 50% 35%, rgba(200,135,90,.15), transparent),
+        radial-gradient(ellipse 50% 40% at 20% 80%, rgba(130,60,100,.1), transparent);
+      pointer-events: none;
+    }
+
+    .splash-inner {
+      position: relative;
+      max-width: 420px;
+      text-align: center;
+    }
+
+    .splash-rose {
+      font-size: 2.8rem;
+      display: block;
+      margin-bottom: 1.8rem;
+      animation: bob 4s ease-in-out infinite;
+      user-select: none;
+    }
+    @keyframes bob {
+      0%,100% { transform: translateY(0) rotate(-4deg); }
+      50%      { transform: translateY(-10px) rotate(4deg); }
+    }
+
+    .splash-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 2.6rem;
+      font-weight: 600;
+      line-height: 1.1;
+      margin-bottom: .75rem;
+      background: linear-gradient(135deg, #f0cfa0, #c8875a);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .splash-sub {
+      font-size: .85rem;
+      color: var(--text-dim);
+      line-height: 1.75;
+      margin-bottom: 2.8rem;
+    }
+
+    .btn-start {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .95rem 3rem;
+      background: linear-gradient(135deg, #c8875a, #eaad7e);
+      border: none;
+      border-radius: 9999px;
+      color: #fff;
+      font-family: inherit;
+      font-size: .95rem;
+      font-weight: 500;
+      letter-spacing: .04em;
+      cursor: pointer;
+      box-shadow: 0 4px 28px rgba(200,135,90,.45);
+      transition: transform .18s, box-shadow .18s;
+    }
+    .btn-start:hover  { transform: translateY(-2px); box-shadow: 0 8px 36px rgba(200,135,90,.55); }
+    .btn-start:active { transform: translateY(0); }
+
+    .splash-cards-preview {
+      display: flex;
+      justify-content: center;
+      gap: .6rem;
+      margin-top: 2.5rem;
+      opacity: .35;
+    }
+    .preview-card {
+      width: 36px;
+      height: 52px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,.15);
+      transform-origin: center bottom;
+    }
+    .preview-card:nth-child(1) { background: #2a0e18; transform: rotate(-8deg); }
+    .preview-card:nth-child(2) { background: #0e2a18; transform: rotate(-3deg); }
+    .preview-card:nth-child(3) { background: #1e0e2a; transform: rotate(2deg); }
+    .preview-card:nth-child(4) { background: #2a1a0e; transform: rotate(7deg); }
+
+    /* ─── Game ───────────────────────────────── */
+    #game {
+      min-height: 100svh;
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      transition: opacity .8s;
+    }
+    #game.in { opacity: 1; }
+
+    .ambient {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse 60% 50% at 25% 85%, rgba(200,135,90,.04), transparent),
+        radial-gradient(ellipse 50% 40% at 75% 15%, rgba(120,60,130,.04), transparent);
+    }
+
+    /* Header */
+    .g-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.2rem 1.75rem;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: rgba(16,14,26,.88);
+      backdrop-filter: blur(14px);
+      z-index: 10;
+    }
+    .g-title {
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+      font-size: 1.15rem;
+      color: var(--gold-light);
+      letter-spacing: .01em;
+    }
+    .g-header-right { display: flex; align-items: center; gap: .55rem; }
+    .counter-pill {
+      font-size: .7rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 9999px;
+      padding: .28rem .85rem;
+      color: var(--text-dim);
+    }
+    .btn-ghost {
+      font-family: inherit;
+      font-size: .7rem;
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      border-radius: 9999px;
+      padding: .28rem .85rem;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .btn-ghost:hover { border-color: var(--gold); color: var(--gold-light); }
+
+    /* Main */
+    .g-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1.5rem 3rem;
+      gap: 1.75rem;
+      position: relative;
+    }
+
+    /* ─── Card ───────────────────────────────── */
+    .card-wrap {
+      perspective: 1100px;
+      width: min(360px, 100%);
+      height: 460px;
+      flex-shrink: 0;
+    }
+
+    .card {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform .65s cubic-bezier(.4,0,.2,1);
+    }
+    .card.flipped { transform: rotateY(180deg); }
+
+    .card-side {
+      position: absolute;
+      inset: 0;
+      border-radius: 22px;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+
+    /* Decorative back of card */
+    .card-back {
+      background: var(--card-bg, linear-gradient(145deg, #1e1a30, #2d2548));
+      border: 1px solid rgba(255,255,255,.08);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      overflow: hidden;
+      transition: background .4s;
+    }
+    .cb-pattern {
+      position: absolute;
+      inset: 0;
+      opacity: .055;
+      background-image: radial-gradient(circle, currentColor 1px, transparent 1px);
+      background-size: 22px 22px;
+      pointer-events: none;
+    }
+    .cb-corner {
+      position: absolute;
+      font-size: .6rem;
+      font-family: 'Playfair Display', serif;
+      opacity: .3;
+      line-height: 1.3;
+      text-align: center;
+    }
+    .cb-corner.tl { top: 1.1rem; left: 1.1rem; }
+    .cb-corner.br { bottom: 1.1rem; right: 1.1rem; transform: rotate(180deg); }
+    .cb-icon  { font-size: 2.6rem; position: relative; z-index: 1; }
+    .cb-label {
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+      font-size: 1rem;
+      position: relative;
+      z-index: 1;
+      opacity: .85;
+    }
+    .cb-hint {
+      font-size: .62rem;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Question face */
+    .card-front {
+      transform: rotateY(180deg);
+      background: #faf7f2;
+      display: flex;
+      flex-direction: column;
+      padding: 2.25rem;
+      color: #18141f;
+      box-shadow: 0 24px 64px rgba(0,0,0,.38);
+    }
+    .q-cat {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      font-size: .62rem;
+      text-transform: uppercase;
+      letter-spacing: .14em;
+      font-weight: 600;
+      margin-bottom: auto;
+    }
+    .q-text {
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+      font-size: 1.38rem;
+      line-height: 1.58;
+      color: #18141f;
+      flex: 1;
+      display: flex;
+      align-items: center;
+    }
+    .q-prompt {
+      font-size: .65rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: rgba(24,20,31,.3);
+      text-align: center;
+      margin-top: auto;
+      padding-top: .9rem;
+      border-top: 1px solid rgba(24,20,31,.07);
+    }
+
+    /* ─── Category Chips ─────────────────────── */
+    .chips-section { width: 100%; max-width: 580px; }
+    .chips-label {
+      font-size: .62rem;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      text-align: center;
+      margin-bottom: .65rem;
+    }
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .4rem;
+      justify-content: center;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+      padding: .38rem .88rem;
+      border-radius: 9999px;
+      border: 1px solid var(--border);
+      background: transparent;
+      font-family: inherit;
+      font-size: .73rem;
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: all .18s;
+      white-space: nowrap;
+    }
+    .chip:hover { border-color: rgba(255,255,255,.18); color: var(--text); }
+    .chip.active {
+      border-color: var(--cc, var(--gold));
+      color: var(--cc, var(--gold-light));
+      background: rgba(200,135,90,.09);
+    }
+
+    /* ─── Draw Button ────────────────────────── */
+    .draw-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: .6rem;
+    }
+    .btn-draw {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      padding: 1rem 3rem;
+      background: linear-gradient(135deg, #c8875a, #eaad7e);
+      border: none;
+      border-radius: 9999px;
+      color: #fff;
+      font-family: inherit;
+      font-size: .95rem;
+      font-weight: 500;
+      letter-spacing: .04em;
+      cursor: pointer;
+      box-shadow: 0 4px 22px rgba(200,135,90,.38);
+      transition: transform .18s, box-shadow .18s, opacity .2s;
+    }
+    .btn-draw:hover:not(:disabled)  { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(200,135,90,.52); }
+    .btn-draw:active:not(:disabled) { transform: translateY(0); }
+    .btn-draw:disabled { opacity: .32; cursor: not-allowed; }
+    .draw-sub {
+      font-size: .68rem;
+      color: var(--text-dim);
+      letter-spacing: .05em;
+    }
+
+    /* ─── Done State ─────────────────────────── */
+    .done-wrap {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 1rem;
+      animation: fadeUp .5s ease;
+    }
+    .done-wrap.show { display: flex; }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .done-icon  { font-size: 2.4rem; }
+    .done-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.4rem;
+    }
+    .done-body {
+      font-size: .82rem;
+      color: var(--text-dim);
+      line-height: 1.65;
+      max-width: 300px;
+    }
+
+    /* ─── Progress ───────────────────────────── */
+    .progress {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--border);
+      z-index: 50;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #c8875a, #eaad7e);
+      transition: width .55s ease;
+    }
+
+    /* ─── Responsive ─────────────────────────── */
+    @media (max-width: 480px) {
+      .splash-title { font-size: 2rem; }
+      .card-wrap    { height: 420px; }
+      .q-text       { font-size: 1.22rem; }
+      .card-front   { padding: 1.8rem; }
+      .g-main       { padding: 1.25rem 1rem 3rem; gap: 1.4rem; }
+      .g-header     { padding: 1rem 1.25rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══ Splash ══════════════════════════════════════════════ -->
+<div id="splash">
+  <div class="splash-bg"></div>
+  <div class="splash-inner">
+    <span class="splash-rose">🌹</span>
+    <h1 class="splash-title">Love &amp; Intimacy</h1>
+    <p class="splash-sub">
+      In even the closest relationships, there are subjects that are difficult to talk about.<br>
+      These cards are your invitation to begin.
+    </p>
+    <button class="btn-start" onclick="startGame()">Begin Together ✦</button>
+    <div class="splash-cards-preview">
+      <div class="preview-card"></div>
+      <div class="preview-card"></div>
+      <div class="preview-card"></div>
+      <div class="preview-card"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Game ════════════════════════════════════════════════ -->
+<div id="game">
+  <div class="ambient"></div>
+
+  <header class="g-header">
+    <span class="g-title">Love &amp; Intimacy</span>
+    <div class="g-header-right">
+      <span class="counter-pill" id="counter">0 / 211</span>
+      <button class="btn-ghost" onclick="resetSession()">New Session</button>
+    </div>
+  </header>
+
+  <main class="g-main">
+
+    <!-- Card -->
+    <div class="card-wrap">
+      <div class="card" id="card">
+        <!-- Decorative back -->
+        <div class="card-side card-back" id="cardBack">
+          <div class="cb-pattern"></div>
+          <div class="cb-corner tl">✦<br>L&I</div>
+          <div class="cb-corner br">✦<br>L&I</div>
+          <div class="cb-icon"  id="cbIcon">✦</div>
+          <div class="cb-label" id="cbLabel">Love &amp; Intimacy</div>
+          <div class="cb-hint">draw a card to begin</div>
+        </div>
+        <!-- Question face -->
+        <div class="card-side card-front" id="cardFront">
+          <div class="q-cat"  id="qCat"></div>
+          <div class="q-text" id="qText"></div>
+          <div class="q-prompt">Take your time — there are no wrong answers</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Done state -->
+    <div class="done-wrap" id="doneWrap">
+      <div class="done-icon">🌷</div>
+      <h2 class="done-title">You've explored it all.</h2>
+      <p class="done-body">Every card in this session has been drawn. Start a new session to shuffle and begin again.</p>
+      <button class="btn-draw" onclick="resetSession()" style="margin-top:.5rem">Start Fresh ✦</button>
+    </div>
+
+    <!-- Category chips -->
+    <div class="chips-section" id="chipsSection">
+      <p class="chips-label">Choose a theme — or draw from any</p>
+      <div class="chips" id="chips"></div>
+    </div>
+
+    <!-- Draw button -->
+    <div class="draw-wrap" id="drawWrap">
+      <button class="btn-draw" id="btnDraw" onclick="draw()">Draw a Card ✦</button>
+      <span class="draw-sub" id="drawSub">211 cards across 11 themes</span>
+    </div>
+
+  </main>
+</div>
+
+<!-- Progress bar -->
+<div class="progress"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// DATA — 211 questions across 11 categories
+// ═══════════════════════════════════════════════════════════
+
+const CATS = [
+  { id:'any',      name:'Any Card',             emoji:'✦',  color:'#c8875a', bg:'linear-gradient(145deg,#1e1a30,#2d2548)' },
+  { id:'desire',   name:'Desire & Intimacy',    emoji:'🔥', color:'#c04060', bg:'linear-gradient(145deg,#2a0e18,#4a1828)' },
+  { id:'love',     name:'Appreciation',         emoji:'💛', color:'#c09020', bg:'linear-gradient(145deg,#2a1e08,#4a3818)' },
+  { id:'growth',   name:'Growth & Forgiveness', emoji:'🌿', color:'#3a9060', bg:'linear-gradient(145deg,#0e2a18,#1a4a30)' },
+  { id:'money',    name:'Money & Lifestyle',    emoji:'💼', color:'#4a7ac0', bg:'linear-gradient(145deg,#0e1e2a,#1a2e4a)' },
+  { id:'family',   name:'Family & Future',      emoji:'🏡', color:'#c07040', bg:'linear-gradient(145deg,#2a1808,#4a2a18)' },
+  { id:'comms',    name:'Communication',        emoji:'💬', color:'#8050c0', bg:'linear-gradient(145deg,#1a0e2a,#30184a)' },
+  { id:'dreams',   name:'Dreams',               emoji:'✨', color:'#5070c8', bg:'linear-gradient(145deg,#0e1630,#1a2450)' },
+  { id:'support',  name:'Partnership',          emoji:'🤝', color:'#2a9080', bg:'linear-gradient(145deg,#0e2a28,#1a4a44)' },
+  { id:'hard',     name:'Hard Talks',           emoji:'🌊', color:'#7040a0', bg:'linear-gradient(145deg,#180e2a,#2a1840)' },
+  { id:'memories', name:'Memories',             emoji:'📷', color:'#a06080', bg:'linear-gradient(145deg,#2a1828,#4a2840)' },
+  { id:'fun',      name:'Fun & Play',           emoji:'🎲', color:'#c05040', bg:'linear-gradient(145deg,#2a1008,#4a2010)' },
+];
+
+const Q = {
+  desire: [
+    "When I am upset, I need you to comfort me like this…",
+    "The physical touch that makes me feel most loved is…",
+    "A fantasy I've been too shy to share with you is…",
+    "The moment I feel most attractive in your eyes is when…",
+    "What makes me feel most desired by you is…",
+    "I feel closest to you physically when…",
+    "The thing I wish we did more of in our intimate life is…",
+    "A boundary I'd love for us to talk about more openly is…",
+    "I feel most safe being vulnerable with you when…",
+    "Something I find deeply attractive about you that I don't say enough is…",
+    "I feel most turned on when…",
+    "The intimate ritual I cherish most between us is…",
+    "When I feel disconnected from you, what helps me reconnect is…",
+    "A sensory memory of us that I treasure is…",
+    "The conversation about intimacy we've been avoiding but should have is…",
+    "A vulnerability in intimacy I'm still working through is…",
+    "I feel most seen and held by you when…",
+    "A way we could deepen our intimacy that I've been thinking about is…",
+    "The kind of touch I never tire of is…",
+    "Something about how I express desire that I want you to understand better is…",
+    "A moment of unexpected closeness between us that I want to revisit is…",
+    "The thing that makes me feel truly wanted by you is…",
+  ],
+  love: [
+    "If I could go back in time in our relationship, I'd love to change how I…",
+    "The small thing you do that means the world to me is…",
+    "I fell in love with you a little more when you…",
+    "The quality in you I admire most and haven't said enough is…",
+    "A moment in our relationship I want to relive is…",
+    "The way you've changed my life for the better is…",
+    "I appreciate how you handle… even when it's hard",
+    "Something beautiful about us that I want to protect is…",
+    "The version of yourself I'm most in awe of is when you…",
+    "I feel luckiest to be with you when…",
+    "A gift you've given me that has nothing to do with money is…",
+    "The way you love me that took me time to recognize was…",
+    "I want you to know that your… has shaped who I am",
+    "A quiet moment between us I hold most dear is…",
+    "The thing I brag about you to others is…",
+    "When I think about my future, the part that involves you is…",
+    "I feel chosen by you when…",
+    "Something I've never properly thanked you for is…",
+    "The way you handle difficult situations that I quietly admire is…",
+    "I love who I become when I'm around you because…",
+    "A time you surprised me and I realized I'd underestimated you was…",
+    "The reason I'm still here, above all others, is…",
+  ],
+  growth: [
+    "Something I've been holding onto that I want to let go of is…",
+    "The hardest thing I've had to forgive in our relationship was…",
+    "A way I've hurt you that I'm still carrying guilt about is…",
+    "The part of myself I'm still working on — for us — is…",
+    "A pattern we keep repeating that I believe we can break by…",
+    "I've grown most in our relationship when…",
+    "Something I was wrong about that I now see differently is…",
+    "I want to apologize properly for…",
+    "What helped me forgive you was…",
+    "A grudge I'm ready to release is…",
+    "The thing I judge myself for in our relationship is…",
+    "I felt like I failed you when… and I want you to know…",
+    "The lesson from our hardest time together that I carry with me is…",
+    "What I've learned about forgiveness from loving you is…",
+    "I want us to commit to changing… together",
+    "The time I felt most repaired after a conflict was when…",
+    "Something I need to forgive myself for is…",
+    "A version of myself I left behind when I met you was…",
+    "The fight that changed us most, and what I learned from it, was…",
+    "An apology I've been holding back but want to give you now is…",
+  ],
+  money: [
+    "My relationship with money growing up was… and it affects us because…",
+    "A financial fear I haven't fully shared with you is…",
+    "The way we handle money together that I'm proud of is…",
+    "Something I secretly want us to save for together is…",
+    "A spending habit of mine that I know affects us is…",
+    "My ideal vision for our lifestyle in ten years looks like…",
+    "The financial decision I wish we'd made differently is…",
+    "Something about how we split responsibilities that I want to revisit is…",
+    "My honest attitude toward financial risk is… and here's how it shows up for us",
+    "A chore or task that makes me feel resentful when it goes unacknowledged is…",
+    "The way you manage our shared life that I quietly admire is…",
+    "If we had one year of complete financial freedom, I'd want us to…",
+    "A lifestyle compromise I've made that I haven't fully voiced is…",
+    "My honest feeling about our current living situation is…",
+    "The financial conversation we keep avoiding is…",
+    "My idea of security looks like…",
+    "What 'enough' means to me is…",
+    "Something about how I was raised to think about money that I want to unlearn is…",
+    "A material thing that would meaningfully improve our day-to-day life is…",
+    "The lifestyle difference between us that I think we should talk more about is…",
+  ],
+  family: [
+    "My honest feelings about our families of origin and how they affect us are…",
+    "A family pattern I'm afraid of repeating is…",
+    "How I imagine us as parents — or in our choice not to be — is…",
+    "A boundary with family I need more support on is…",
+    "The future version of us I hold in my heart is…",
+    "A milestone I want us to celebrate more intentionally is…",
+    "A tradition I want us to create together is…",
+    "My honest feelings about where we live and where I'd like to be are…",
+    "How I want to raise children differently from how I was raised is…",
+    "Something I want to do with you before we're old is…",
+    "The vision of family life I had before us that I've updated is…",
+    "A value I want our home life to embody more is…",
+    "The question about our future I'm most afraid to ask is…",
+    "Something I want my family to understand about why I chose you is…",
+    "My honest feeling about the pace our relationship is moving is…",
+    "A role in our relationship I want to grow into is…",
+    "Something I want us to prioritize in the next chapter of our lives is…",
+    "The version of 'home' I dream of building with you is…",
+    "How I think about aging — and who I want beside me — is…",
+    "Something I hope our relationship teaches anyone who witnesses it is…",
+  ],
+  comms: [
+    "The thing I find hardest to say to you is…",
+    "A way I shut down in arguments that I want to change is…",
+    "Something I often communicate poorly that I want to do better is…",
+    "The moment I feel most heard by you is when…",
+    "A topic we avoid that I think we should talk about more is…",
+    "When I go quiet, what's usually going on inside me is…",
+    "Something you do in conflict that helps me feel safe is…",
+    "I feel most trusted by you when…",
+    "Something I've been afraid to be fully honest with you about is…",
+    "The feedback I've been scared to give you is…",
+    "I feel most connected to you after we…",
+    "When we disagree, what I really need from you is…",
+    "Something I've held back because I was scared of your reaction is…",
+    "The way I express love that I think you might miss is…",
+    "A way we could fight more fairly is…",
+    "Something I want you to know without me always having to say it is…",
+    "A truth I've been living around without fully stating is…",
+    "The way I need you to listen when I'm struggling is…",
+    "Something about how we communicate that I want to celebrate is…",
+    "A moment I felt truly understood by you was when…",
+  ],
+  dreams: [
+    "A dream I've been too afraid to tell you about is…",
+    "The version of myself I'm working toward is…",
+    "Something I gave up that I still think about is…",
+    "A creative or personal project I want your encouragement on is…",
+    "The career or life path I sometimes quietly wonder about is…",
+    "Something I want to be remembered for is…",
+    "A place in the world I want us to experience together is…",
+    "The thing that makes me feel most alive is… and I want more of it",
+    "A skill or ability I want to develop before I'm old is…",
+    "If I could do anything for a year with no constraints, I'd…",
+    "A passion I've let fade that I want to reignite is…",
+    "The dream I had as a child that still hasn't left me is…",
+    "Something I want to learn from you is…",
+    "A legacy I want to leave in the world is…",
+    "What adventure means to me is…",
+    "The version of our life together I'm most excited about is…",
+    "A personal goal that scares me but lights me up is…",
+    "Something I want to stop doing to make room for…",
+    "The thing that would make me feel like I truly lived is…",
+    "A part of my inner world I want you to understand better is…",
+  ],
+  support: [
+    "The moment I felt most supported by you was when…",
+    "Something I carry alone that I wish we could share is…",
+    "A way I need more partnership from you right now is…",
+    "The thing I do for us that I wish felt more appreciated is…",
+    "I feel like a team with you most when…",
+    "A way I can show up better for you right now is…",
+    "The biggest sacrifice I've made for us that I'd make again is…",
+    "Something I need from you in hard times that's different from what I usually ask for is…",
+    "A way you've shown up for me that I'll never forget is…",
+    "I feel alone in our relationship when…",
+    "The thing I want us to tackle together that feels too big is…",
+    "A responsibility I've been hoping you'd take on is…",
+    "Something that helps me feel held by you is…",
+    "A time you put me first that meant everything is…",
+    "I feel like a burden when… and what I need to hear is…",
+    "The way we could be a stronger team is…",
+    "Something I admire about how you love the people in your life is…",
+    "A season in our relationship where I felt we were perfectly in sync was…",
+    "The thing I want us to never stop doing for each other is…",
+    "Something I want you to always count on me for is…",
+  ],
+  hard: [
+    "Something related to my past that still affects my behavior in our relationship is…",
+    "A wound from before us that sometimes shows up between us is…",
+    "A fear about abandonment or loss that lives in me is…",
+    "Something about my mental or emotional health I want you to understand better is…",
+    "A way I self-protect that sometimes hurts you is…",
+    "The thing I most need you to be patient with me about is…",
+    "A trauma response in me that I want to explain better is…",
+    "Something hard that happened in my past that shapes how I love is…",
+    "A fear about our relationship that I've been carrying quietly is…",
+    "A topic that shuts me down in ways I can't fully explain is…",
+    "What I need when my anxiety or low mood takes over is…",
+    "The hardest truth about myself that I want you to hold gently is…",
+    "A story from my childhood that explains a lot about who I am is…",
+    "Something I've survived that I want you to truly understand is…",
+    "My relationship with my own body that I want you to know about is…",
+    "A time I felt truly alone before you that still stays with me is…",
+    "A shadow side of myself that I want you to love anyway is…",
+    "Something about grief or loss that I carry with me is…",
+    "A fear about losing you that I rarely say out loud is…",
+    "The part of my story I've been most afraid to share with you is…",
+  ],
+  memories: [
+    "The moment I knew we were going to be something real was…",
+    "A memory of us that makes me smile without fail is…",
+    "The funniest moment in our relationship so far is…",
+    "A time we were perfectly in sync that I want to recreate is…",
+    "The experience that defined us as a couple for me was…",
+    "A small ritual from early in our relationship I miss is…",
+    "The moment I saw you differently for the first time was…",
+    "A story about us I love telling other people is…",
+    "The trip or adventure I want us to take again is…",
+    "A photo of us that I want to exist but we haven't taken yet would be of…",
+    "An era of our relationship I'd go back to for just one day is…",
+    "The first time I realized I was falling for you was…",
+  ],
+  fun: [
+    "The most embarrassing thing about falling for you is…",
+    "A ridiculous scenario I'd love us to find ourselves in together is…",
+    "If our relationship were a movie, the title would be…",
+    "The weirdest habit of yours that I've grown to love is…",
+    "If I could design our perfect weekend with no budget, it would look like…",
+    "A song that is secretly 'our song' to me is…",
+    "An inside joke between us that never gets old is…",
+    "If I had to describe you in three words to a stranger, they'd be…",
+    "The romantic cliché I secretly love about us is…",
+    "If we were any animal together, we'd be… because…",
+    "A version of me from my childhood that you would have loved is…",
+    "The most spontaneous thing I want us to do together is…",
+    "If we wrote a book about our love story, the first line would be…",
+    "A dare I'd give you right now that I think would surprise you is…",
+    "The worst date we could possibly go on — and we'd still have fun — would be…",
+  ],
+};
+
+// Flatten all IDs: "cat:index"
+const ALL_IDS = Object.entries(Q).flatMap(([cat, qs]) => qs.map((_, i) => `${cat}:${i}`));
+const TOTAL   = ALL_IDS.length; // 211
+
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+let used       = new Set();
+let selCat     = 'any';
+let flipped    = false;
+let animating  = false;
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+function init() {
+  buildChips();
+  refreshUI();
+}
+
+function buildChips() {
+  const wrap = document.getElementById('chips');
+  CATS.forEach(c => {
+    const btn = document.createElement('button');
+    btn.className = 'chip' + (c.id === 'any' ? ' active' : '');
+    btn.dataset.id = c.id;
+    btn.style.setProperty('--cc', c.color);
+    btn.innerHTML = `<span>${c.emoji}</span>${c.name}`;
+    btn.onclick = () => pickCat(c.id);
+    wrap.appendChild(btn);
+  });
+}
+
+function pickCat(id) {
+  selCat = id;
+  document.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', c.dataset.id === id));
+  const cat = CATS.find(c => c.id === id);
+  setCardBackTheme(cat);
+  refreshUI();
+}
+
+function setCardBackTheme(cat) {
+  const back = document.getElementById('cardBack');
+  back.style.background = cat.bg;
+  document.getElementById('cbIcon').textContent  = cat.emoji;
+  document.getElementById('cbLabel').textContent = cat.name;
+}
+
+function remaining() {
+  if (selCat === 'any') return TOTAL - used.size;
+  return Q[selCat].map((_, i) => `${selCat}:${i}`).filter(id => !used.has(id)).length;
+}
+
+function refreshUI() {
+  const r   = remaining();
+  const btn = document.getElementById('btnDraw');
+  const sub = document.getElementById('drawSub');
+  document.getElementById('counter').textContent = `${used.size} / ${TOTAL}`;
+  document.getElementById('progressFill').style.width = ((used.size / TOTAL) * 100) + '%';
+
+  if (r === 0) {
+    btn.disabled = true;
+    sub.textContent = 'No more cards in this theme this session';
+  } else {
+    btn.disabled = false;
+    btn.textContent = flipped ? 'Next Card ✦' : 'Draw a Card ✦';
+    sub.textContent = r === TOTAL
+      ? `${TOTAL} cards across 11 themes`
+      : `${r} card${r === 1 ? '' : 's'} remaining`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// DRAW
+// ═══════════════════════════════════════════════════════════
+function pickQ() {
+  const pool = selCat === 'any'
+    ? ALL_IDS.filter(id => !used.has(id))
+    : Q[selCat].map((_, i) => `${selCat}:${i}`).filter(id => !used.has(id));
+  if (!pool.length) return null;
+  const id = pool[Math.floor(Math.random() * pool.length)];
+  used.add(id);
+  const [cat, idx] = id.split(':');
+  return { cat, text: Q[cat][+idx] };
+}
+
+async function draw() {
+  if (animating) return;
+  const q = pickQ();
+  if (!q) { showDone(); return; }
+
+  animating = true;
+  const card = document.getElementById('card');
+
+  if (flipped) {
+    card.classList.remove('flipped');
+    flipped = false;
+    await wait(380);
+  }
+
+  renderQ(q);
+  await wait(90);
+  card.classList.add('flipped');
+  flipped = true;
+  await wait(680);
+  animating = false;
+  refreshUI();
+}
+
+function renderQ(q) {
+  const cat = CATS.find(c => c.id === q.cat);
+  const el  = document.getElementById('qCat');
+  el.innerHTML = `<span>${cat.emoji}</span>${cat.name}`;
+  el.style.color = cat.color;
+  document.getElementById('qText').textContent = q.text;
+}
+
+function showDone() {
+  document.getElementById('doneWrap').classList.add('show');
+  document.getElementById('drawWrap').style.display   = 'none';
+  document.getElementById('chipsSection').style.display = 'none';
+  document.getElementById('card').style.opacity = '0';
+  document.getElementById('card').style.pointerEvents = 'none';
+}
+
+const wait = ms => new Promise(r => setTimeout(r, ms));
+
+// ═══════════════════════════════════════════════════════════
+// SESSION RESET
+// ═══════════════════════════════════════════════════════════
+function resetSession() {
+  used.clear();
+  flipped   = false;
+  animating = false;
+
+  const card = document.getElementById('card');
+  card.classList.remove('flipped');
+  card.style.opacity = '';
+  card.style.pointerEvents = '';
+
+  document.getElementById('doneWrap').classList.remove('show');
+  document.getElementById('drawWrap').style.display   = '';
+  document.getElementById('chipsSection').style.display = '';
+
+  // Reset chip to "any"
+  selCat = 'any';
+  document.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', c.dataset.id === 'any'));
+  setCardBackTheme(CATS[0]);
+  refreshUI();
+}
+
+// ═══════════════════════════════════════════════════════════
+// SPLASH → GAME
+// ═══════════════════════════════════════════════════════════
+function startGame() {
+  document.getElementById('splash').classList.add('out');
+  document.getElementById('game').classList.add('in');
+  init();
+}
+</script>
+</body>
+</html>
